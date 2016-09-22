@@ -1,0 +1,17 @@
+{
+  "name": "hubot",
+  "version": "0.0.0",
+  "private": true,
+  "author": "Y",
+  "description": "Keep it cool for Fractured Atlas",
+  "dependencies": {
+    "cron": "^1.1.0",
+    "hubot": ">= 2.0.0",
+    "hubot-flowdock": ">= 0.0.1",
+    "hubot-trello": "^0.2.0",
+    "time": "^0.11.4"
+  },
+  "engines": {
+    "node": "0.10.x"
+  }
+}
