@@ -12,6 +12,10 @@ available, etc!
 [hubot]: http://hubot.github.com
 [generator-hubot]: https://github.com/github/generator-hubot
 
+### Configuration specific to this bot
+
+You'll need to add your HUBOT_TRELLO_KEY and HUBOT_TRELLO_TOKEN env variables.
+
 ### Running hubot Locally
 
 You can test your hubot by running the following, however some plugins will not
