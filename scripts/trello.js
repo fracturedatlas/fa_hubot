@@ -8,29 +8,41 @@ module.exports = function(robot) {
 }
 
 var trelloBugBeGone = function(robot) {
-  var list = "https://api.trello.com/1/lists/58063da38e3169695b4e114e/cards"
-  var auth = "?key="+process.env.HUBOT_TRELLO_KEY+"&token="+process.env.HUBOT_TRELLO_TOKEN
+  var list, auth, bug, jsonBugs;
+  list = "https://api.trello.com/1/lists/58063da38e3169695b4e114e/cards"
+  auth = "?key="+process.env.HUBOT_TRELLO_KEY+"&token="+process.env.HUBOT_TRELLO_TOKEN
+  jsonBugs = {"bugs":[{"http://imgur.com/ohMwHIq":"fact!"},
+                      {"http://imgur.com/ohMwHIq":"Another fact!"}]}
 
-  var bugs = [
-    "http://imgur.com/ohMwHIq",
-    "http://imgur.com/qoxb11l"
-  ]
+  randomBug = jsonBugs["bugs"][Math.floor(Math.random()*jsonBugs["bugs"].length)];
+
+  bugFact = function() {
+    return Object.keys(randomBug).map(function(key) {
+      return randomBug[key]
+    });
+  };
+
+  bugImage = function() {
+    return Object.keys(randomBug);
+  };
 
   var getCards = robot.http(list + auth)
                   .get()(function(err, res, body) {
                       response = JSON.parse(body);
+
                       if (response.length >= 10) {
+
                         robot.messageRoom('fracturedatlas/bottesting',
                         "👞🐛👠🐞👟🐌👞🕷👠 \n" +
+                        "Did you know that " + bugFact() + " and we have " +
                         response.length + " bugs in the backlog! \n" +
                         "Squash your hearts out!" +
-                        bugs.random +
-                        "\n 👞🐛👠🐞👟🐌👞🕷👠")
+                        bugImage())
                       }
                   })
 
   return function() {
-    console.log("HEY!")
+    console.log(bugFact())
     console.log(getCards)
   }
 }
