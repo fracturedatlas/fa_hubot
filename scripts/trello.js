@@ -11,8 +11,7 @@ var trelloBugBeGone = function(robot) {
   var list, auth, bug, jsonBugs;
   list = "https://api.trello.com/1/lists/58063da38e3169695b4e114e/cards"
   auth = "?key="+process.env.HUBOT_TRELLO_KEY+"&token="+process.env.HUBOT_TRELLO_TOKEN
-  jsonBugs = {"bugs":[{"http://imgur.com/ohMwHIq":"fact!"},
-                      {"http://imgur.com/ohMwHIq":"Another fact!"}]}
+  jsonBugs = getBugs()
 
   randomBug = jsonBugs["bugs"][Math.floor(Math.random()*jsonBugs["bugs"].length)];
 
@@ -45,4 +44,16 @@ var trelloBugBeGone = function(robot) {
     console.log(bugFact())
     console.log(getCards)
   }
+}
+
+var getBugs = function() {
+  return {"bugs":[
+          {
+          "http://imgur.com/ohMwHIq":"fact!"
+          },
+          {
+          "http://imgur.com/ohMwHIq":"Another fact!"
+          }]
+        }
+
 }
