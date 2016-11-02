@@ -11,12 +11,21 @@ var trelloBugBeGone = function(robot) {
   var list = "https://api.trello.com/1/lists/58063da38e3169695b4e114e/cards"
   var auth = "?key="+process.env.HUBOT_TRELLO_KEY+"&token="+process.env.HUBOT_TRELLO_TOKEN
 
+  var bugs = [
+    "http://imgur.com/ohMwHIq",
+    "http://imgur.com/qoxb11l"
+  ]
+
   var getCards = robot.http(list + auth)
                   .get()(function(err, res, body) {
                       response = JSON.parse(body);
-                      if (response.length >= 1) {
-                        console.log("You guys have some bugs to fix!")
-                        robot.messageRoom('fracturedatlas/bottesting', "@tasha!! I'm Alive <3")
+                      if (response.length >= 10) {
+                        robot.messageRoom('fracturedatlas/bottesting',
+                        "👞🐛👠🐞👟🐌👞🕷👠 \n" +
+                        response.length + " bugs in the backlog! \n" +
+                        "Squash your hearts out!" +
+                        bugs.random +
+                        "\n 👞🐛👠🐞👟🐌👞🕷👠")
                       }
                   })
 
