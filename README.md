@@ -1,3 +1,14 @@
+# Fractued Atlas Hubot Settings
+
+To run this bot you'll need to set the following env variables:
+  HUBOT_TRELLO_KEY
+  HUBOT_TRELLO_TOKEN
+  HUBOT_TRELLO_BOARD
+  HUBOT_FLOWDOCK_API_TOKEN
+  HUBOT_NAME
+  HUBOT_FLOWDOCK_LOGIN_EMAIL
+  HUBOT_FLOWDOCK_LOGIN_PASSWORD
+
 # hubot
 
 hubot is a chat bot built on the [Hubot][hubot] framework. It was

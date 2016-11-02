@@ -6,8 +6,8 @@
   "description": "Keep it cool for Fractured Atlas",
   "dependencies": {
     "cron": "^1.1.0",
-    "hubot": ">= 2.0.0",
-    "hubot-flowdock": ">= 0.0.1",
+    "hubot": ">= 2.5.0",
+    "hubot-flowdock": "^0.7.6",
     "hubot-trello": "^0.2.0",
     "time": "^0.11.4"
   },
