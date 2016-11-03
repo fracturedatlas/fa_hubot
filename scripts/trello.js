@@ -4,7 +4,7 @@ module.exports = function(robot) {
   cronJob = require('cron').CronJob;
   tz = 'America/New_York'
 
-  new cronJob('00 10 * * 1-5', (function(){return trelloBugBeGone(robot)}), null, true, tz);
+  new cronJob('01 10 * * 1-5', (function(){return trelloBugBeGone(robot)}), null, true, tz);
 }
 
 return trelloBugBeGone = function(robot) {
