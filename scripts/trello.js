@@ -4,7 +4,7 @@ module.exports = function(robot) {
   cronJob = require('cron').CronJob;
   tz = 'America/New_York'
 
-  new cronJob('30 09 * * 1-5', (function(){return trelloBugBeGone(robot)}), null, true, tz);
+  new cronJob('00 10 * * 1-5', (function(){return trelloBugBeGone(robot)}), null, true, tz);
 }
 
 return trelloBugBeGone = function(robot) {
@@ -121,8 +121,8 @@ return trelloBugBeGone = function(robot) {
                       };
 
                       if (response.length >= 10) {
-                        robot.messageRoom('fracturedatlas/bottesting',
-                        "Did you know that " + bugFact() + "? \n Looks like we have " +
+                        robot.messageRoom('fracturedatlas/developers',
+                        "Hi Team! \n Did you know that " + bugFact() + "? \n Looks like we have " +
                         response.length + " bugs in the backlog today. \n" +
                         bugImage() +
                         "👞🐛👠🐞👟🐌👞🕷👠 \n" +
