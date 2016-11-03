@@ -7,6 +7,7 @@
   "dependencies": {
     "cron": "^1.1.0",
     "hubot": ">= 2.5.0",
+    "hubot-diagnostics": "0.0.1",
     "hubot-flowdock": "^0.7.6",
     "hubot-heroku-keepalive": "^1.0.2",
     "hubot-trello": "^0.2.0",
