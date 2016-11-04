@@ -1,6 +1,6 @@
 # Fractued Atlas Hubot Settings
 
-To run this bot you'll need to set the following env variables:
+To run this bot you'll need to set the following env variables:  
   HUBOT_TRELLO_KEY  
   HUBOT_TRELLO_TOKEN  
   HUBOT_TRELLO_BOARD  
