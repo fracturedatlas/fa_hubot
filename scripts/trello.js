@@ -122,10 +122,9 @@ return trelloBugBeGone = function(robot) {
 
                       if (response.length >= 10) {
                         robot.messageRoom('fracturedatlas/developers',
-                        "Hi Team! \n Did you know that " + bugFact() + "? \n Looks like we have " +
-                        response.length + " bugs ready for our eyes in Bug & Chores! \n" +
+                        "Morning Team! 👞🐛 \n Did you know that " + bugFact() + "? \n Looks like we have " +
+                        response.length + " bugs ready for our eyes on the Bug & Chores board! \n" +
                         bugImage() +
-                        "👞🐛👠🐞👟🐌👞🕷👠 \n" +
                         "Squash your hearts out!")
                       }
                   })
