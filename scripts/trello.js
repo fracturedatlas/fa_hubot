@@ -125,7 +125,7 @@ return trelloBugBeGone = function(robot) {
                         "Morning Team! 👞🐛 \n Did you know that " + bugFact() + "? \n Looks like we have " +
                         response.length + " bugs ready for our eyes on the Bug & Chores board! \n" +
                         bugImage() +
-                        "Squash your hearts out!")
+                        " Squash your hearts out!")
                       }
                   })
 
