@@ -17,127 +17,12 @@
 //
 // Author:
 //   <wolfpakz>
-////////////
-// command: @hubot artfully deploy 585
-// output: Deploying PR #585 ..
 
-// output: ...bebe..de..beep..
-
-// output: PR 585 is ready to go -> http://artfully-staging-pr-585.herokuapp.com
-//   - or -
-// output: Had a problem deploying PR 585 -> https://dashboard.heroku.com/pipelines/78003e87-0c91-4bb2-b68f-412b38a07155
-// Github API:
-//    Must include header - Accept: application/vnd.github.v3+json
-//    Fetch PR details like - /repos/geminisbs/nche-helpline/pulls
-//       (note the PR response['head']['sha'] is used in the tarball request below)
-//    Fetch Tarball of PR   - /repos/fracturedatlas/artful.ly/tarball/cab1a4352ec59e1071ff99f9310642b173607029
-//       (read tarball URL from Location header in response)
-// TODO:
-//   Download the tarball
-//   Compute tarball checksum
-//   Upload tarball somewhere temporary (S3)
-//   Create a Heroku build using the checksum and temporary tarball link
-// Heroku API:
-//    Must include header - Accept: application/vnd.heroku+json; version=3
-// TODO:
-//   Figure out how to make Heroku read the app.json when we trigger a build
 var GitHubApi = require("github");
 var Heroku = require("heroku-client");
 
-// API
-// // // // // // // // // // // // // // // // // // // // // // // // // //
-
-function deploy(github, heroku, response, number) {
-  response.reply("Deploying PR #" + number);
-  github.authenticate({type: "oauth", token: process.env.HUBOT_GITHUB_TOKEN});
-
-  getPrTarball(github, response, number);
-
-  // var sha = pr['head']['sha'];
-  // var blob = getPrTarball(sha, response);
-
-  // createHerokuBuild(blob)
-  // removePgAddon(app);
-  // provisionDatabase(app);
-  // provisionSolrIndex(app);
-  // configureApp(app);
-  // scaleProcesses(app);
-}
-
-function createReviewApp(number)
-{
-}
-
-function getPullRequest(number, response) {
-
-  github.path("/repos/fracturedatlas/artful.ly/pulls/" + number)
-    .get()(function (err, res, body) {
-      var data = null;
-      res.reply("Reading PR #" + number);
-
-      if (err) {
-        res.reply("Had problems reading PR #" + number);
-        errorHandler(err, res);
-        return;
-      }
-
-      if (res.statusCode !== 200) {
-        res.reply("Response from reading PR #" + number + " was NOT 200 OK");
-        return;
-      }
-
-      data = JSON.parse(body);
-
-      robot.emit('artfully-pr-read', {
-        sha: data['head']['sha']
-      });
-    });
-}
-
-function getPrTarball(github, response, number) {
-  // github.path("/repos/fracturedatlas/artful.ly/tarball/" + sha)
-  //   .get()(function (err, res, body) {
-  //     var data = null;
-  //
-  //     if (err) {
-  //       res.reply("Had problems getting tarball for SHA " + sha);
-  //       errorHandler(err, res);
-  //       return;
-  //     }
-  //
-  //     if (res.statusCode !== 200) {
-  //       res.reply("Response from getting tarball for SHA " + number + " was NOT 200 OK");
-  //       return;
-  //     }
-  //
-  //     data = JSON.parse(body);
-  //   });
-
-  var getPrOptions = {
-    owner: 'fracturedatlas',
-    repo: 'artful.ly',
-    number: number
-  };
-  github.pullRequests.get(getPrOptions, function(err, res) {
-
-  });
-
-  var getArchiveOptions = {
-    owner: 'fracturedatlas',
-    repo: 'artful.ly',
-    ref: sha,
-    archive_format: "tarball"
-  };
-  github.repos.getArchiveLink(getArchiveOptions);
-}
-
-function errorHandler(err, res) {
-  if (res) {
-    res.reply(err)
-  }
-}
-
 module.exports = function (robot) {
+  // Clients
   var github = new GitHubApi({
     // optional
     debug: true,
@@ -149,13 +34,138 @@ module.exports = function (robot) {
     followRedirects: false, // default: true; there's currently an issue with non-get redirects, so allow ability to disable follow-redirects
     timeout: 5000
   });
-
   var heroku = new Heroku({ token: process.env.HUBOT_HEROKU_KEY });
 
-  robot.error(errorHandler);
 
-  return robot.respond(/deploy artfully (pr )?(\d+)/i, function(response) {
-    var number = response.match[2];
-    deploy(github, heroku, response, number);
+  // Hubot Setup
+  robot.error(function (err, res) {
+    if (res) {
+      res.reply(err)
+    }
   });
+
+  robot.on('artfully.deploy', function(deploy) {
+    deploy.user.reply('Starting deploy for ' + deploy.app)
+    getPullRequest(deploy);
+  });
+
+  robot.on('artfully.pr-ready', function(deploy) {
+    checkHerokuApp(deploy)
+  });
+
+  return robot.respond(/deploy artfully (pr )?(\d+)/i, function(res) {
+    var deploy = {
+      user: res,
+      githubRepo: 'artful.ly',
+      githubPr: res.match[2],
+      herokuApp: 'artfully-staging-pr-' + res.match[2]
+    };
+
+    robot.emit('artfully.deploy', deploy);
+  });
+
+
+  // // // // // // // // // // // // // // // // // // // // // // // // // //
+
+
+  // API
+  //
+  // All methods in the API receive a single <Deploy> object. The deploy process
+  // is carried out via a series of emitted events and event handlers.
+  //
+  // Deploy object
+  //   Collection of information about a deploy. Event handlers receive a Deploy
+  //   object when they're called.
+  //
+  //   Example Object
+  //   {  user: <hubot response object>,
+  //      githubPr: '559',
+  //      githubSha: 'cab1a4352ec59e1071ff99f9310642b173607029',
+  //      herokuApp: 'artfully-staging-pr-<number>',
+  //      herokuBuild: '...',
+  //   }
+  //
+  // Event Handler
+  //   A handler responds to Hubot events. New events are emitted when
+  //   a handler's job is complete.
+  //
+
+  // Events
+  //   artfully.deploy( {user: res, githubRepo: 'artful.ly', githubPr: '559'} )
+  //      -> find the pr
+  //      -> get tarball link
+  //      -> emit artfully.pr-ready
+  //
+
+  //   artfully.pr-ready( {..., githubSha: '.', githubTarball: '.'} )
+  //      -> find heroku app
+  //      -> create heroku app if needed
+  //      -> remove pg addon
+  //      -> (future) provision db
+  //      -> (future) provision solr
+  //      -> configure env
+  //      -> create heroku build
+  //      -> emit artfully.heroku-build
+  //
+
+  //  artfully.heroku-build( {..., herokuBuild: '.'} )
+  //      -> wait for build to complete
+  //      -> emit artfully.heroku-ready
+  //
+
+  //  artfully.heroku-ready
+  //      -> scale processes
+  //      -> emit artfully.???
+
+
+  function getPullRequest(deploy) {
+    deploy.user.reply("Reading PR #" + deploy.githubPr);
+
+    github.authenticate({type: "oauth", token: process.env.HUBOT_GITHUB_TOKEN});
+    var getOptions = {owner: 'fracturedatlas', repo: 'artful.ly', number: deploy.pr};
+
+    github.pullRequests.get(getOptions, function (err, res) {
+      if (err) {
+        deploy.user.reply("Had problems reading PR #" + deploy.githubPr + ": ");
+        deploy.user.reply(err);
+        return;
+      }
+
+      deploy.githubSha = res.head.githubSha;
+
+      requestTarball(deploy);
+    });
+  }
+
+
+  function requestTarball(deploy) {
+    deploy.user.reply("Requesting Tarball of " + deploy.sha);
+
+    var getArchiveOptions = {
+      owner: 'fracturedatlas',
+      repo: 'artful.ly',
+      ref: deploy.githubSha,
+      archive_format: "tarball"
+    };
+
+    github.repos.getArchiveLink(getArchiveOptions, function(err, res) {
+      if (err) {
+        deploy.user.reply("Had problems downloading Tarball of " + deploy.sha + ": ");
+        deploy.user.reply(err);
+        return;
+      }
+
+      deploy.githubTarball = res.meta.location;
+
+      deploy.user.reply("Tarball location is " + deploy.githubTarball);
+      robot.emit('artfully.pr-ready', deploy);
+    });
+  }
+
+  function checkHerokuApp(deploy) {
+    // TODO:
+    //   Figure out how to make Heroku read the app.json when we trigger a build
+
+    deploy.user.reply('Checking ')
+  }
 };
