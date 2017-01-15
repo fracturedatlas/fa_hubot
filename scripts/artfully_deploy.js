@@ -1,3 +1,22 @@
+// Description:
+//   Deploys Artful.ly PR
+//
+// Dependencies:
+//   "<module name>": "<module version>"
+//
+// Configuration:
+//   LIST_OF_ENV_VARS_TO_SET
+//
+// Commands:
+//   hubot deploy artfully [pr #] - Deploys Pull Request to a review app
+//
+// Notes:
+//   <optional notes required for the script>
+//
+// Author:
+//   <wolfpakz>
+
+////////////
 // command: @hubot artfully deploy 585
 // output: Sure boss, one second while I deploy PR 585 ..
 
@@ -29,8 +48,21 @@
 
 module.exports = function (robot) {
 
-  function deployPullRequest(number) {
-    var app = createReviewApp(number);
+  var github = robot.http("https://api.github.com")
+    .header('Accept', 'application/vnd.github.v3+json')
+    .header('Authorization', 'Basic Z2VtaW5pc2JzOmI5ZWZlMWY0OWM4ZWFkMDUzZTIxZmNlYjg0NjYyOTRjYjE2YWZiOWQ=');
+
+
+  function deployPullRequest(number, response) {
+
+    response.reply("Reading PR #" + number);
+    getPullRequest(number, response);
+
+    var sha = pr['head']['sha'];
+    var blob = getGithubBlob(sha, response);
+    createHerokuBuild(blob)
+
+
     removePgAddon(app);
     provisionDatabase(app);
     provisionSolrIndex(app);
@@ -38,66 +70,61 @@ module.exports = function (robot) {
     scaleProcesses(app);
   }
 
-  function getPullRequest(number) {
-    // GET /repos/fracturedatlas/artful.ly/pulls/:number
-    // response['head']['sha']
-    robot.http("https://api.github.com/repos/fracturedatlas/artful.ly/pulls/" + number)
-      .header('Accept', 'application/vnd.github.v3+json')
-      .header('Authorize', 'Basic Z2VtaW5pc2JzOmI5ZWZlMWY0OWM4ZWFkMDUzZTIxZmNlYjg0NjYyOTRjYjE2YWZiOWQ=')
-      .get(function (err, res, body) {
+  function createReviewApp(number) {
+  }
+
+  function getPullRequest(number, response) {
+
+    github.path("/repos/fracturedatlas/artful.ly/pulls/" + number)
+      .get()(function (err, res, body) {
         var data = null;
-        robot.logger.info('-- Error');
-        robot.logger.info(err);
-        robot.logger.info('--');
-
-        robot.logger.info('--- Body');
-        robot.logger.info(body);
-        robot.logger.info('--');
-
 
         if (err) {
-          robot.logger.info("Er, whoops: ");
-          robot.logger.info(err);
+          res.reply("Had problems reading PR #" + number);
+          errorHandler(err, res);
           return;
         }
 
-        try {
-          data = JSON.parse(body);
-          robot.logger.info("PR SHA is " + data['head']['sha']);
-        } catch (error) {
-          robot.logger.info('--- JSON error');
-          robot.logger.info(err);
-          robot.logger.info('--');
-          robot.logger.info("Had a problem parsing JSON - Sorry.. :(");
+        if (res.statusCode !== 200) {
+          res.reply("Response from reading PR #" + number + " was NOT 200 OK");
           return;
         }
+
+        data = JSON.parse(body);
+        robot.emit('get-pull-request', {
+          sha: data['head']['sha']
+        });
       });
   }
 
-  function createReviewApp(number) {
-    // GET /repos/:owner/:repo/git/blobs/:sha
-    var pr = getPullRequest(number);
-    var blob = getGithubBlob(pr['head']['sha']);
-    createHerokuBuild(blob)
-  }
+  function getGithubBlob(sha, response) {
+    github.path("/repos/fracturedatlas/artful.ly/tarball/" + sha)
+      .get()(function(err, res, body) {
+        var data = null;
 
-  function processCommand(res) {
-    var number = res.match[2]
-    res.send('Deploying PR ' + number);
-    deployPullRequest(number);
-    return;
+        if (err) {
+          errorHandler(err, res);
+          return;
+        }
+
+
+      });
   }
 
   function errorHandler(err, res) {
-    robot.logger.error("DOES NOT COMPUTE")
     robot.logger.error(err);
 
-    if (res) {
-      res.reply("DOES NOT COMPUTE")
-    }
+    if (res) { res.reply(err) }
   }
 
-  /////////////////////////////
   robot.error(errorHandler);
-  robot.respond(/artfully deploy (pr |PR )?(\d+)/, processCommand);
+
+  /////////////////////////////
+
+
+  return robot.respond(/deploy artfully (pr )?(\d+)/i, function(response) {
+    var number = response.match[2];
+
+    deployPullRequest(number, response);
+  });
 };
