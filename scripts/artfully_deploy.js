@@ -66,8 +66,10 @@ module.exports = function (robot) {
 
 
   // // // // // // // // // // // // // // // // // // // // // // // // // //
-
-
+  //
+  // Inspiration drawn from:
+  //    https://github.com/boxxenapp/hubot-deploy/blob/master/src/deploy/heroku.coffee
+  //
   // API
   //
   // All methods in the API receive a single <Deploy> object. The deploy process
