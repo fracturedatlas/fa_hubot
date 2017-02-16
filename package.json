@@ -18,8 +18,7 @@
     "hubot-trello": "^0.2.0",
     "time": "^0.11.4",
     "github": "^8.0.0",
-    "heroku-client": "^3.0.0-beta3",
-    "bluebird": "^3.4.7"
+    "heroku-client": "^3.0.0-beta3"
   },
   "engines": {
     "node": "0.10.x"
