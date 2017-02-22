@@ -50,7 +50,7 @@ module.exports = function (robot) {
   });
 
   robot.on('artfully.pr-ready', function (deploy) {
-    createHerokuBuild(deploy)
+    createHerokuBuild(deploy);
   });
 
   robot.on('artfully.heroku-build', function(deploy) {
@@ -172,12 +172,12 @@ module.exports = function (robot) {
   function checkHerokuApp(deploy) {
     // TODO:
     // We need to remember what endpoint we were looking at.
-    //   Figure out how to make Heroku read the app.json when we trigger a build
+    // Figure out how to make Heroku read the app.json when we trigger a build
 
     deploy.user.reply('Checking if Heroku app ' + deploy.herokuApp + ' exists');
     heroku.get('/apps/' + deploy.herokuApp).then(app => {
       deploy.herokuUrl = app.web_url;
-    
+
       deploy.user.reply("Found app at " + deploy.herokuUrl);
       createHerokuBuild(deploy);
     }, err => {
@@ -207,19 +207,20 @@ module.exports = function (robot) {
         app: {name: deploy.herokuApp},
         source_blob: {
           url: deploy.githubTarball,
+          checksum: '',
           version: deploy.githubSha
         }
       }
     };
 
     deploy.user.reply("Creating Heroku build ...");
-
+    deploy.user.reply("Build params: " + JSON.stringify(buildParams));
     // var appUrl = '/app/' + deploy.herokuApp + '/builds';
     heroku.post('/app-setups', buildParams).then(data => {
         deploy.user.reply('Build started ' + data.id);
         deploy.user.reply("The data is " + JSON.stringify(data))
         //TODO ⬇️ figure out wtf the data.outbput_stream_url is supposed to be
-        //is this from the old endpoint? 
+        //is this from the old endpoint?
         deploy.user.reply('Watch the log stream here ' + data.output_stream_url);
         deploy.herokuBuild = data.id;
 
@@ -227,6 +228,7 @@ module.exports = function (robot) {
       },
       err => {
         deploy.user.reply('Had problems starting build: ' + err.message);
+        deploy.user.reply(JSON.stringify(err.body));
       });
   }
 
@@ -240,7 +242,7 @@ module.exports = function (robot) {
 
   function checkBuild(deploy) {
     deploy.user.reply("Checking on build " + deploy.herokuBuild);
-    heroku.get('/apps/' + deploy.herokuApp + '/builds/' + deploy.herokuBuild).then(build => {
+    heroku.get('/app-setups/' + deploy.herokuBuild).then(build => {
       if (build.status === 'pending') {
         monitorBuild(deploy);
       } else {
@@ -251,10 +253,12 @@ module.exports = function (robot) {
         }
 
         deploy.user.reply("Had problems building: build status is " + build.status);
+        deploy.user.reply(JSON.stringify(build));
       }
     },
     err => {
       deploy.user.reply("Had problems checking build status: " + err.message);
+      deploy.user.reply(JSON.stringify(err.body));
     });
   }
 };
