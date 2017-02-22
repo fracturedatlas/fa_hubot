@@ -113,24 +113,25 @@ module.exports = function (robot) {
   //
 
   //   artfully.pr-ready( {..., githubSha: '.', githubTarball: '.'} )
-  //      -> find heroku app
-  //      -> create heroku app if needed
-  //      -> remove pg addon
-  //      -> (future) provision db
-  //      -> (future) provision solr
   //      -> configure env
-  //      -> create heroku build
   //      -> emit artfully.heroku-build
   //
 
   //  artfully.heroku-build( {..., herokuBuild: '.'} )
+  //      -> (future) couple to pipeline
   //      -> wait for build to complete
-  //      -> emit artfully.heroku-ready
+  //      -> remove pg addon
+  //      -> emit artfully.heroku-build-success
   //
 
-  //  artfully.heroku-ready
-  //      -> scale processes
-  //      -> emit artfully.???
+  //  artfully.heroku-build-success
+  //      -> (future) provision db
+  //      -> emit artfully.database-attached
+
+  // artfully.database-attached
+  //      -> (future) provision solr
+  //      -> emit artfully.deploy-complete
+
 
 
   function getPullRequest(deploy) {
@@ -316,6 +317,8 @@ module.exports = function (robot) {
         if (build.status === 'succeeded') {
           deploy.user.reply("Success! Deploy complete");
           deploy.user.reply(deploy.herokuUrl);
+
+          robot.emit('artfully.heroku-build-success');
           return;
         }
 
