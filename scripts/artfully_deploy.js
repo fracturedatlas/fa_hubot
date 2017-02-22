@@ -50,6 +50,14 @@ module.exports = function (robot) {
   });
 
   robot.on('artfully.pr-ready', function (deploy) {
+    readAppJson(deploy);
+  });
+
+  robot.on('artfully.app-json-ready', function (deploy) {
+    getEnvOverrides(deploy);
+  });
+
+  robot.on('artfully.env-ready', function (deploy) {
     createHerokuBuild(deploy);
   });
 
@@ -62,6 +70,7 @@ module.exports = function (robot) {
       user: res,
       githubRepo: 'artful.ly',
       githubPr: res.match[2],
+      herokuParentApp: 'artfully-staging',
       herokuApp: 'artfully-staging-pr-' + res.match[2]
     };
 
@@ -201,6 +210,61 @@ module.exports = function (robot) {
       });
   }
 
+  function readAppJson(deploy) {
+    deploy.user.reply("Requesting app.json ...");
+
+    var getContentsOptions = {
+      owner: 'fracturedatlas',
+      repo: 'artful.ly',
+      path: 'app.json'
+    };
+
+    github.repos.getContent(getContentsOptions, function (err, res) {
+      if (err) {
+        deploy.user.reply("Had problems downloading app.json");
+        deploy.user.reply(err);
+        return;
+      }
+
+      let buffer = new Buffer(res.content, 'base64');
+      deploy.appJson = JSON.parse(buffer.toString('ascii'));
+
+      deploy.user.reply("Contents of app.json: " + deploy.appJson);
+      robot.emit('artfully.app-json-ready', deploy);
+    });
+  };
+
+
+  function getEnvOverrides(deploy) {
+    let requiredVars = [];
+    let env = deploy.appJson.env;
+
+    for (let i in env) {
+      if (typeof env[i] == 'object' && env[i].required === true) {
+        requiredVars.push(i);
+      }
+    }
+
+    deploy.user.reply("Required vars: " + JSON.stringify(requiredVars));
+
+    heroku.get('/apps/' + deploy.herokuParentApp + '/config-vars').then(config => {
+      deploy.envOverrides = {};
+
+      for (let i in requiredVars) {
+        let key = requiredVars[i];
+
+        deploy.envOverrides[key] = config[key];
+      }
+
+      deploy.user.reply("ENV overrides are:");
+      deploy.user.reply(JSON.stringify(deploy.envOverrides));
+      robot.emit('artfully.env-ready', deploy);
+
+    }, err => {
+      deploy.user.reply('Had problems reading config vars for Heroku app ' + deploy.herokuApp + ':' + err.message);
+    });
+  }
+
   function createHerokuBuild(deploy) {
     var buildParams = {
       body: {
@@ -209,6 +273,9 @@ module.exports = function (robot) {
           url: deploy.githubTarball,
           checksum: '',
           version: deploy.githubSha
+        },
+        overrides: {
+          env: deploy.envOverrides
         }
       }
     };
