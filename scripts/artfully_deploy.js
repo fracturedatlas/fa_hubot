@@ -171,21 +171,22 @@ module.exports = function (robot) {
 
   function checkHerokuApp(deploy) {
     // TODO:
+    // We need to remember what endpoint we were looking at.
     //   Figure out how to make Heroku read the app.json when we trigger a build
 
-    // deploy.user.reply('Checking if Heroku app ' + deploy.herokuApp + ' exists');
-    // heroku.get('/apps/' + deploy.herokuApp).then(app => {
-    //   deploy.herokuUrl = app.web_url;
-    //
-    //   deploy.user.reply("Found app at " + deploy.herokuUrl);
-    //   createHerokuBuild(deploy);
-    // }, err => {
-    //   if (err.statusCode == '404') {
-    //     createHerokuApp(deploy);
-    //   } else {
-    //     deploy.user.reply('Had problems checking for Heroku app ' + deploy.herokuApp + ':' + err.message);
-    //   }
-    // });
+    deploy.user.reply('Checking if Heroku app ' + deploy.herokuApp + ' exists');
+    heroku.get('/apps/' + deploy.herokuApp).then(app => {
+      deploy.herokuUrl = app.web_url;
+    
+      deploy.user.reply("Found app at " + deploy.herokuUrl);
+      createHerokuBuild(deploy);
+    }, err => {
+      if (err.statusCode == '404') {
+        createHerokuApp(deploy);
+      } else {
+        deploy.user.reply('Had problems checking for Heroku app ' + deploy.herokuApp + ':' + err.message);
+      }
+    });
   }
 
   function createHerokuApp(deploy) {
@@ -216,6 +217,9 @@ module.exports = function (robot) {
     // var appUrl = '/app/' + deploy.herokuApp + '/builds';
     heroku.post('/app-setups', buildParams).then(data => {
         deploy.user.reply('Build started ' + data.id);
+        deploy.user.reply("The data is " + JSON.stringify(data))
+        //TODO ⬇️ figure out wtf the data.outbput_stream_url is supposed to be
+        //is this from the old endpoint? 
         deploy.user.reply('Watch the log stream here ' + data.output_stream_url);
         deploy.herokuBuild = data.id;
 
