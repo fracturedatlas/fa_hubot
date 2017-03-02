@@ -58,11 +58,14 @@ module.exports = function (robot) {
   });
 
   robot.on('artfully.env-ready', function (deploy) {
-    createHerokuBuild(deploy);
+    checkHerokuApp(deploy);
   });
 
   robot.on('artfully.heroku-build', function(deploy) {
     monitorBuild(deploy);
+  });
+
+  robot.on('artfully.heroku-pipeline-attached', function(deploy) {
   });
 
   return robot.respond(/deploy artfully (pr )?(\d+)/i, function (res) {
@@ -188,11 +191,10 @@ module.exports = function (robot) {
     heroku.get('/apps/' + deploy.herokuApp).then(app => {
       deploy.herokuUrl = app.web_url;
 
-      deploy.user.reply("Found app at " + deploy.herokuUrl);
-      createHerokuBuild(deploy);
+      deploy.user.reply("Looks like your app's already deployed dude: " + deploy.herokuUrl);
     }, err => {
       if (err.statusCode == '404') {
-        createHerokuApp(deploy);
+        createHerokuBuild(deploy);
       } else {
         deploy.user.reply('Had problems checking for Heroku app ' + deploy.herokuApp + ':' + err.message);
       }
@@ -204,7 +206,6 @@ module.exports = function (robot) {
 
     heroku.post('/apps', {body: {name: deploy.herokuApp}}).then(app => {
         deploy.herokuUrl = app.web_url;
-        createHerokuBuild(deploy);
       },
       err => {
         deploy.user.reply('Had problems creating Heroku app: ' + err.message);
@@ -311,6 +312,11 @@ module.exports = function (robot) {
   function checkBuild(deploy) {
     deploy.user.reply("Checking on build " + deploy.herokuBuild);
     heroku.get('/app-setups/' + deploy.herokuBuild).then(build => {
+      if (deploy.isAttached !== true) { 
+        attachToPipeline(deploy); 
+        deploy.isAttached = true;
+      }
+  
       if (build.status === 'pending') {
         monitorBuild(deploy);
       } else {
@@ -318,7 +324,7 @@ module.exports = function (robot) {
           deploy.user.reply("Success! Deploy complete");
           deploy.user.reply(deploy.herokuUrl);
 
-          robot.emit('artfully.heroku-build-success');
+          robot.emit('artfully.heroku-build-success', deploy);
           return;
         }
 
@@ -331,4 +337,24 @@ module.exports = function (robot) {
       deploy.user.reply(JSON.stringify(err.body));
     });
   }
+
+  function attachToPipeline(deploy) {
+     var pipeline_id = '78003e87-0c91-4bb2-b68f-412b38a07155' 
+     var params = {
+       body: {
+         app: deploy.herokuApp,
+         pipeline: pipeline_id, 
+         stage: 'review'
+       }
+     }
+
+      heroku.post('/pipeline-couplings', params).then(response => {
+        deploy.user.reply("Your app has been attached to the pipeline!");
+        robot.emit('artfully.heroku-pipeline-attached', deploy);
+      },
+
+      err => {
+        deploy.user.reply("Had a problem attaching your app to the pipeline: " + JSON.stringify(err) + ", The body is: " + JSON.stringify(err.body));
+     });
+   }  
 };
