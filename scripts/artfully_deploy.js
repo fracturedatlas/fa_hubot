@@ -34,13 +34,13 @@ module.exports = function (robot) {
     followRedirects: false, // default: true; there's currently an issue with non-get redirects, so allow ability to disable follow-redirects
     timeout: 5000
   });
-  var heroku = new Heroku({debug: false, token: process.env.HUBOT_HEROKU_KEY});
 
+  var heroku = new Heroku({debug: false, token: process.env.HUBOT_HEROKU_KEY});
 
   // Hubot Setup
   robot.error(function (err, res) {
     if (res) {
-      res.reply(err)
+      res.reply(err);
     }
   });
 
@@ -66,6 +66,15 @@ module.exports = function (robot) {
   });
 
   robot.on('artfully.heroku-pipeline-attached', function(deploy) {
+    addCollaborators(deploy);
+  });
+
+  robot.on('artfully.add-collaborator', function(data) {
+    addCollaborator(data.userId, data.deploy);
+  });
+
+  robot.on('artfully.heroku-build-success', function(deploy) {
+    addDbUrl(deploy);
   });
 
   return robot.respond(/deploy artfully (pr )?(\d+)/i, function (res) {
@@ -287,10 +296,7 @@ module.exports = function (robot) {
     // var appUrl = '/app/' + deploy.herokuApp + '/builds';
     heroku.post('/app-setups', buildParams).then(data => {
         deploy.user.reply('Build started ' + data.id);
-        deploy.user.reply("The data is " + JSON.stringify(data))
-        //TODO ⬇️ figure out wtf the data.outbput_stream_url is supposed to be
-        //is this from the old endpoint?
-        deploy.user.reply('Watch the log stream here ' + data.output_stream_url);
+        deploy.user.reply("The data is " + JSON.stringify(data));
         deploy.herokuBuild = data.id;
 
         robot.emit('artfully.heroku-build', deploy);
@@ -308,15 +314,62 @@ module.exports = function (robot) {
     }, 10000);
   }
 
+  function addCollaborators(deploy) {
+    deploy.user.reply("Adding collaborators");
+
+    heroku.get('/apps/' + deploy.herokuParentApp + '/collaborators').then(response => {
+      deploy.user.reply('Inspecting colab get: ' + JSON.stringify(response));
+      for(var i in response) {
+        deploy.user.reply('Id: ' + response[i].user.id);
+        robot.emit('artfully.add-collaborator', {userId: response[i].user.id, deploy: deploy});
+      }
+    },
+      err => {
+        deploy.user.reply('Had problems getting collaborator info: ' + err.message);
+      });
+  }
+
+  function addCollaborator(userId, deploy) {
+    deploy.user.reply("Adding a collaborator");
+
+    params = {
+      body: {
+        user: userId,
+        silent: true
+      }
+    }
+
+    heroku.post('/apps/' + deploy.herokuApp + '/collaborators', params).then(response => {
+      deploy.user.reply('Collaborator added: ' + userId);
+    },
+      err => {
+        deploy.user.reply('Had an error adding collaborator: ' + userId);
+      });
+  }
+
+  function addDbUrl(deploy) {
+    params = {
+      body: {
+        'DATABASE_URL': process.env.MYSQL_DATABASE_URL
+     }
+    }
+
+    heroku.patch('/apps/' + deploy.herokuApp + '/config-vars', params).then(response => {
+      deploy.user.deploy('Configured database url env variable');
+    },
+    err => {
+      deploy.user.deploy('Had a problem adding a database env');
+    });
+  }
 
   function checkBuild(deploy) {
     deploy.user.reply("Checking on build " + deploy.herokuBuild);
     heroku.get('/app-setups/' + deploy.herokuBuild).then(build => {
-      if (deploy.isAttached !== true) { 
-        attachToPipeline(deploy); 
+      if (deploy.isAttached !== true) {
+        attachToPipeline(deploy);
         deploy.isAttached = true;
       }
-  
+
       if (build.status === 'pending') {
         monitorBuild(deploy);
       } else {
@@ -339,11 +392,11 @@ module.exports = function (robot) {
   }
 
   function attachToPipeline(deploy) {
-     var pipeline_id = '78003e87-0c91-4bb2-b68f-412b38a07155' 
+     var pipeline_id = '78003e87-0c91-4bb2-b68f-412b38a07155';
      var params = {
        body: {
          app: deploy.herokuApp,
-         pipeline: pipeline_id, 
+         pipeline: pipeline_id,
          stage: 'review'
        }
      }
@@ -356,5 +409,5 @@ module.exports = function (robot) {
       err => {
         deploy.user.reply("Had a problem attaching your app to the pipeline: " + JSON.stringify(err) + ", The body is: " + JSON.stringify(err.body));
      });
-   }  
+   }
 };
