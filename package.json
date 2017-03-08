@@ -16,7 +16,9 @@
     "hubot-rules": "^0.1.1",
     "hubot-shipit": "^0.2.0",
     "hubot-trello": "^0.2.0",
-    "time": "^0.11.4"
+    "time": "^0.11.4",
+    "github": "^8.0.0",
+    "heroku-client": "^3.0.0-beta3"
   },
   "engines": {
     "node": "0.10.x"
